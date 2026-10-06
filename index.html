@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tempered Glass Stock</title>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #f4f6f8;
+    color: #222;
+}
+
+header {
+    background: #1565c0;
+    color: white;
+    padding: 22px 15px;
+    text-align: center;
+}
+
+header h1 {
+    margin: 0 0 6px;
+    font-size: 28px;
+}
+
+header p {
+    margin: 0;
+    opacity: 0.9;
+}
+
+.container {
+    max-width: 1000px;
+    margin: auto;
+    padding: 20px 15px;
+}
+
+.search {
+    width: 100%;
+    padding: 15px;
+    font-size: 17px;
+    border: 1px solid #ccc;
+    border-radius: 10px;
+    margin-bottom: 15px;
+}
+
+.count {
+    margin-bottom: 15px;
+    font-weight: bold;
+}
+
+.card {
+    background: white;
+    border-radius: 12px;
+    padding: 18px;
+    margin-bottom: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.card h2 {
+    margin: 0 0 8px;
+    font-size: 21px;
+}
+
+.brand {
+    color: #666;
+    margin-bottom: 12px;
+}
+
+.box {
+    display: inline-block;
+    background: #ffd600;
+    color: #111;
+    padding: 7px 12px;
+    border-radius: 6px;
+    font-weight: bold;
+    margin-right: 8px;
+}
+
+.stock {
+    display: inline-block;
+    background: #e8f5e9;
+    color: #2e7d32;
+    padding: 7px 12px;
+    border-radius: 6px;
+    font-weight: bold;
+}
+
+.out {
+    background: #ffebee;
+    color: #c62828;
+}
+
+.no-results {
+    text-align: center;
+    padding: 30px;
+    color: #777;
+}
+
+footer {
+    text-align: center;
+    padding: 25px;
+    color: #777;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+    <h1>Tempered Glass Stock</h1>
+    <p>Search your model to find the box number</p>
+</header>
+
+<div class="container">
+
+    <input
+        type="search"
+        id="search"
+        class="search"
+        placeholder="Search phone model..."
+        autocomplete="off"
+    >
+
+    <div id="count" class="count">Loading...</div>
+
+    <div id="inventory"></div>
+
+</div>
+
+<footer>
+    Inventory Stock
+</footer>
+
+<script>
+let inventory = [];
+
+const inventoryContainer = document.getElementById("inventory");
+const searchInput = document.getElementById("search");
+const countElement = document.getElementById("count");
+
+function escapeHTML(value) {
+    return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+function displayInventory(items) {
+
+    countElement.textContent =
+        `${items.length} model${items.length === 1 ? "" : "s"} found`;
+
+    if (items.length === 0) {
+        inventoryContainer.innerHTML =
+            '<div class="no-results">No matching model found.</div>';
+        return;
+    }
+
+    inventoryContainer.innerHTML = items.map(item => {
+
+        const quantity = Number(item.quantity) || 0;
+
+        return `
+            <div class="card">
+
+                <h2>
+                    ${escapeHTML(item.brand)}
+                    ${escapeHTML(item.model)}
+                </h2>
+
+                <div class="brand">
+                    Model: ${escapeHTML(item.model)}
+                </div>
+
+                <span class="box">
+                    Box: ${escapeHTML(item.box_number)}
+                </span>
+
+                ${
+                    quantity > 0
+                    ? `<span class="stock">Stock: ${quantity}</span>`
+                    : `<span class="stock out">Out of stock</span>`
+                }
+
+            </div>
+        `;
+
+    }).join("");
+}
+
+function searchInventory() {
+
+    const query = searchInput.value
+        .trim()
+        .toLowerCase();
+
+    if (!query) {
+        displayInventory(inventory);
+        return;
+    }
+
+    const results = inventory.filter(item => {
+
+        const brand = String(item.brand || "").toLowerCase();
+        const model = String(item.model || "").toLowerCase();
+        const box = String(item.box_number || "").toLowerCase();
+
+        return (
+            brand.includes(query) ||
+            model.includes(query) ||
+            box.includes(query)
+        );
+    });
+
+    displayInventory(results);
+}
+
+searchInput.addEventListener("input", searchInventory);
+
+/*
+    Load inventory from the same GitHub Pages site.
+    Cache-busting ensures the newest data.json is requested.
+*/
+fetch("data.json?v=" + Date.now(), {
+    cache: "no-store"
+})
+.then(response => {
+    if (!response.ok) {
+        throw new Error("Could not load inventory data.");
+    }
+
+    return response.json();
+})
+.then(data => {
+
+    inventory = Array.isArray(data) ? data : [];
+
+    displayInventory(inventory);
+
+})
+.catch(error => {
+
+    console.error(error);
+
+    countElement.textContent = "Unable to load inventory.";
+
+    inventoryContainer.innerHTML = `
+        <div class="no-results">
+            Inventory data could not be loaded.
+        </div>
+    `;
+});
+</script>
+
+</body>
+</html>
